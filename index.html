@@ -2,20 +2,113 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Programa de Recompensas</title>
+  <meta name="description" content="Sumá puntos con cada carga, subí de categoría y desbloqueá beneficios VIP." />
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎰</text></svg>">
+
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
-  <h1>Programa de Recompensas</h1>
+  <header class="header">
+    <h1>Programa de Recompensas</h1>
+    <p>Sumá puntos con cada carga y subí de categoría</p>
+  </header>
 
-  <h2>Mis puntos</h2>
-  <input id="userQuery" placeholder="Tu usuario" />
-  <button id="btnBuscar">Ver</button>
+  <main>
 
-  <p id="out"></p>
+    <section class="section">
+      <h2>¿Cómo funcionan los puntos?</h2>
+      <p><strong>$1.000</strong> cargados = <strong>1 punto</strong></p>
+      <p class="muted">Los puntos se calculan sobre los <strong>últimos 30 días</strong>.</p>
+    </section>
 
-  <!-- Supabase (CDN) -->
+    <section class="section">
+      <h2>Niveles</h2>
+
+      <div class="niveles-grid">
+        <div class="nivel bronce">
+          <h3>Bronce</h3>
+          <p>0 - 49 puntos</p>
+          <p><strong>+5%</strong> en cargas</p>
+        </div>
+
+        <div class="nivel plata">
+          <h3>Plata</h3>
+          <p>50 - 149 puntos</p>
+          <p><strong>+10%</strong> en cargas</p>
+        </div>
+
+        <div class="nivel oro">
+          <h3>Oro</h3>
+          <p>150 - 399 puntos</p>
+          <p><strong>+15%</strong> en cargas</p>
+        </div>
+
+        <div class="nivel diamante">
+          <h3>Diamante</h3>
+          <p>400 - 999 puntos</p>
+          <p><strong>+20%</strong> + VIP</p>
+        </div>
+
+        <div class="nivel leyenda">
+          <h3>Leyenda</h3>
+          <p>1000+ puntos</p>
+          <p><strong>VIP</strong> + hasta $1.000.000 bonificación</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Mis puntos</h2>
+      <p>Ingresá tu usuario para ver tus puntos (últimos 30 días), tu nivel y el progreso.</p>
+
+      <div class="consulta">
+        <input id="userQuery" placeholder="Tu usuario (ej: dana)" />
+        <button id="btnBuscar" type="button">Ver</button>
+      </div>
+
+      <div id="resBox" class="resultado" style="display:none;">
+        <h3 id="resTitle"></h3>
+        <p id="resText"></p>
+
+        <div class="barra">
+          <div id="resProg" class="barra-fill" style="width:0%;"></div>
+        </div>
+        <p id="resProgText" class="muted"></p>
+
+        <h4>Últimos movimientos</h4>
+        <ul id="movList"></ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Canje de puntos</h2>
+
+      <table class="tabla">
+        <tr>
+          <th>Puntos</th>
+          <th>Fichas</th>
+        </tr>
+        <tr><td>10</td><td>$1.500</td></tr>
+        <tr><td>25</td><td>$4.000</td></tr>
+        <tr><td>50</td><td>$10.000</td></tr>
+        <tr><td>100</td><td>$25.000</td></tr>
+      </table>
+
+      <p class="muted">Al canjear, los puntos se descuentan.</p>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>Programa sujeto a cambios. Consultá soporte para más info.</p>
+    <p class="muted">Cajeros: usar <strong>/cajero2.html</strong></p>
+  </footer>
+
+  <!-- Supabase + App -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
