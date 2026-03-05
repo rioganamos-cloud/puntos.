@@ -4,27 +4,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Panel Cajero</title>
 
 <style>
 
 body{
-font-family:Arial;
+font-family: Arial;
 background:#0f172a;
 color:white;
-padding:40px
+padding:40px;
 }
 
 h1{
-margin-bottom:30px
+margin-bottom:30px;
 }
 
 input{
 padding:10px;
 margin:5px;
 border-radius:6px;
-border:none
+border:none;
 }
 
 button{
@@ -33,18 +32,18 @@ border:none;
 border-radius:6px;
 background:#22c55e;
 color:white;
-cursor:pointer
+cursor:pointer;
 }
 
 button:hover{
-background:#16a34a
+background:#16a34a;
 }
 
 .caja{
 background:#1e293b;
 padding:20px;
 border-radius:10px;
-margin-bottom:30px
+margin-bottom:30px;
 }
 
 </style>
@@ -53,17 +52,16 @@ margin-bottom:30px
 
 <body>
 
-<h1>Panel de Cajeros</h1>
+<h1>Panel Cajero</h1>
 
 <div class="caja">
 
 <h3>Registrar carga</h3>
 
 <input id="usuario" placeholder="Usuario jugador">
-
 <input id="monto" placeholder="Monto carga">
 
-<button onclick="cargar()">Registrar carga</button>
+<button id="btnCarga">Registrar carga</button>
 
 </div>
 
@@ -72,10 +70,9 @@ margin-bottom:30px
 <h3>Registrar canje</h3>
 
 <input id="usuarioCanje" placeholder="Usuario jugador">
-
 <input id="puntosCanje" placeholder="Puntos a canjear">
 
-<button onclick="canjear()">Registrar canje</button>
+<button id="btnCanje">Registrar canje</button>
 
 </div>
 
@@ -91,57 +88,56 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 
-async function cargar(){
+async function registrarCarga(){
 
-let usuario = document.getElementById("usuario").value
-let monto = document.getElementById("monto").value
+const usuario = document.getElementById("usuario").value
+const monto = document.getElementById("monto").value
 
-let puntos = Math.floor(monto/1000)
+const puntos = Math.floor(monto/1000)
 
-const { error } = await supabase.from("movements").insert([{
-
+const { error } = await supabase
+.from("movements")
+.insert([{
 username:usuario,
 type:"CARGA",
 amount_ars:monto,
 points:puntos
-
 }])
 
 if(error){
-
 document.getElementById("msg").innerText="Error: "+error.message
 return
+}
+
+document.getElementById("msg").innerText="Carga registrada"
 
 }
 
-document.getElementById("msg").innerText="Carga registrada correctamente"
+async function registrarCanje(){
 
-}
+const usuario = document.getElementById("usuarioCanje").value
+const puntos = document.getElementById("puntosCanje").value
 
-async function canjear(){
-
-let usuario = document.getElementById("usuarioCanje").value
-let puntos = document.getElementById("puntosCanje").value
-
-const { error } = await supabase.from("movements").insert([{
-
+const { error } = await supabase
+.from("movements")
+.insert([{
 username:usuario,
 type:"CANJE",
 amount_ars:0,
 points:-puntos
-
 }])
 
 if(error){
-
 document.getElementById("msg").innerText="Error: "+error.message
 return
+}
+
+document.getElementById("msg").innerText="Canje registrado"
 
 }
 
-document.getElementById("msg").innerText="Canje registrado correctamente"
-
-}
+document.getElementById("btnCarga").addEventListener("click", registrarCarga)
+document.getElementById("btnCanje").addEventListener("click", registrarCanje)
 
 </script>
 
