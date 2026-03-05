@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Panel Cajero</title>
+
+  <!-- evita el 404 del favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎰</text></svg>">
+
+  <style>
+    body{font-family:Arial;background:#0f172a;color:#fff;padding:40px}
+    .caja{background:#1e293b;padding:20px;border-radius:10px;margin-bottom:20px;max-width:520px}
+    input,select{padding:10px;margin:6px 0;border-radius:6px;border:none;width:100%}
+    button{padding:10px 16px;border:none;border-radius:6px;background:#22c55e;color:#fff;cursor:pointer;width:100%}
+    button:hover{background:#16a34a}
+    #msg{margin-top:14px;max-width:520px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  </style>
+</head>
+<body>
+
+  <h1>Panel Cajero</h1>
+
+  <div class="caja">
+    <h3>Registrar movimiento</h3>
+
+    <input id="u" placeholder="Usuario jugador (ej: dana)" />
+
+    <div class="row">
+      <select id="t">
+        <option value="CARGA">CARGA (suma)</option>
+        <option value="CANJE">CANJE (resta)</option>
+      </select>
+      <input id="caj" placeholder="Nombre cajero (opcional)" />
+    </div>
+
+    <div class="row">
+      <input id="m" placeholder="Monto (solo carga) ej 10000" inputmode="numeric" />
+      <input id="p" placeholder="Puntos (solo canje) ej 25" inputmode="numeric" />
+    </div>
+
+    <button id="go" type="button">Guardar</button>
+  </div>
+
+  <p id="msg"></p>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // usamos window.sb para evitar choques aunque el script se ejecute 2 veces
+    window.sb = window.sb || window.supabase.createClient(
+      "https://mldxqjkodyteeaafbbgy.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sZHhxamtvZHl0ZWVhYWZiYmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2NzAyNjAsImV4cCI6MjA4ODI0NjI2MH0.sUzvxyBUregItjOrjfizEhzBnV32iPRg7gBPmXAmPa0"
+    );
+
+    const $ = (id) => document.getElementById(id);
+    const setMsg = (txt) => $("msg").innerText = txt;
+
+    async function guardar() {
+      const username = $("u").value.trim();
+      const type = $("t").value;
+      const cashier = $("caj").value.trim();
+
+      const monto = parseInt($("m").value, 10) || 0;
+      const ptsCanje = parseInt($("p").value, 10) || 0;
+
+      if (!username) return setMsg("❌ Falta usuario");
+
+      let amount_ars = 0;
+      let points = 0;
+
+      if (type === "CARGA") {
+        if (monto <= 0) return setMsg("❌ Monto inválido");
+        amount_ars = monto;
+        points = Math.floor(monto / 1000);
+      } else {
+        if (ptsCanje <= 0) return setMsg("❌ Puntos de canje inválidos");
+        amount_ars = 0;
+        points = -Math.abs(ptsCanje);
+      }
+
+      setMsg("Guardando...");
+
+      const { error } = await window.sb.from("movements").insert([{
+        username, type, amount_ars, points, cashier
+      }]);
+
+      if (error) return setMsg("❌ Error: " + error.message);
+
+      setMsg(`✅ OK: ${username} ${type === "CARGA" ? "+" : ""}${points} pts`);
+      $("m").value = "";
+      $("p").value = "";
+    }
+
+    $("go").addEventListener("click", guardar);
+  </script>
+</body>
+</html>
