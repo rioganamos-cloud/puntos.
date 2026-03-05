@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Panel Cajero</title>
+
+</head>
+
+<body>
+
+<h1>Panel de Cajeros</h1>
+
+<h3>Registrar carga</h3>
+
+<input id="usuario" placeholder="Usuario jugador">
+
+<input id="monto" placeholder="Monto">
+
+<button onclick="cargar()">Registrar carga</button>
+
+<h3>Registrar canje</h3>
+
+<input id="usuarioCanje" placeholder="Usuario jugador">
+
+<input id="puntosCanje" placeholder="Puntos a canjear">
+
+<button onclick="canjear()">Registrar canje</button>
+
+<p id="msg"></p>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+
+const SUPABASE_URL = "https://mldxqjkodyteeaafbbgy.supabase.co"
+
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sZHhxamtvZHl0ZWVhYWZiYmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2NzAyNjAsImV4cCI6MjA4ODI0NjI2MH0.sUzvxyBUregItjOrjfizEhzBnV32iPRg7gBPmXAmPa0"
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+async function cargar(){
+
+let usuario = document.getElementById("usuario").value
+
+let monto = document.getElementById("monto").value
+
+let puntos = Math.floor(monto / 1000)
+
+await supabase.from("movements").insert({
+
+username:usuario,
+type:"CARGA",
+amount_ars:monto,
+points:puntos
+
+})
+
+document.getElementById("msg").innerText="Carga registrada"
+
+}
+
+async function canjear(){
+
+let usuario = document.getElementById("usuarioCanje").value
+
+let puntos = document.getElementById("puntosCanje").value
+
+await supabase.from("movements").insert({
+
+username:usuario,
+type:"CANJE",
+amount_ars:0,
+points:-puntos
+
+})
+
+document.getElementById("msg").innerText="Canje registrado"
+
+}
+
+</script>
+
+</body>
+
+</html>
