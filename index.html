@@ -19,6 +19,31 @@
 
   <main>
 
+    <!-- ✅ MIS PUNTOS PRIMERO -->
+    <section class="section">
+      <h2>Mis puntos</h2>
+      <p>Ingresá tu usuario para ver tus puntos (últimos 30 días), tu nivel y el progreso.</p>
+
+      <div class="consulta">
+        <input id="userQuery" placeholder="Tu usuario (ej: dana)" />
+        <button id="btnBuscar" type="button">Ver</button>
+      </div>
+
+      <div id="resBox" class="resultado" style="display:none;">
+        <h3 id="resTitle"></h3>
+        <p id="resText"></p>
+
+        <div class="barra">
+          <div id="resProg" class="barra-fill" style="width:0%;"></div>
+        </div>
+        <p id="resProgText" class="muted"></p>
+
+        <h4>Últimos movimientos</h4>
+        <ul id="movList"></ul>
+      </div>
+    </section>
+
+    <!-- resto abajo -->
     <section class="section">
       <h2>¿Cómo funcionan los puntos?</h2>
       <p><strong>$1.000</strong> cargados = <strong>1 punto</strong></p>
@@ -58,29 +83,6 @@
           <p>1000+ puntos</p>
           <p><strong>VIP</strong> + hasta $1.000.000 bonificación</p>
         </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2>Mis puntos</h2>
-      <p>Ingresá tu usuario para ver tus puntos (últimos 30 días), tu nivel y el progreso.</p>
-
-      <div class="consulta">
-        <input id="userQuery" placeholder="Tu usuario (ej: dana)" />
-        <button id="btnBuscar" type="button">Ver</button>
-      </div>
-
-      <div id="resBox" class="resultado" style="display:none;">
-        <h3 id="resTitle"></h3>
-        <p id="resText"></p>
-
-        <div class="barra">
-          <div id="resProg" class="barra-fill" style="width:0%;"></div>
-        </div>
-        <p id="resProgText" class="muted"></p>
-
-        <h4>Últimos movimientos</h4>
-        <ul id="movList"></ul>
       </div>
     </section>
 
