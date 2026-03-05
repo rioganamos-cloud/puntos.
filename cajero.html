@@ -1,26 +1,8 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Panel Cajero</title>
-</head>
-
-<body>
-
-<h2>Registrar carga</h2>
-
-<input id="usuario" placeholder="Usuario">
-<input id="monto" placeholder="Monto">
-
-<button id="btnCarga">Registrar</button>
-
-<p id="msg"></p>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
 
-const supabase = window.supabase.createClient(
+var supabase = window.supabase.createClient(
 "https://mldxqjkodyteeaafbbgy.supabase.co",
 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sZHhxamtvZHl0ZWVhYWZiYmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2NzAyNjAsImV4cCI6MjA4ODI0NjI2MH0.sUzvxyBUregItjOrjfizEhzBnV32iPRg7gBPmXAmPa0"
 );
@@ -42,10 +24,8 @@ points:puntos
 }])
 
 if(error){
-
 document.getElementById("msg").innerText="Error: "+error.message
 return
-
 }
 
 document.getElementById("msg").innerText="Carga registrada"
@@ -55,6 +35,3 @@ document.getElementById("msg").innerText="Carga registrada"
 document.getElementById("btnCarga").addEventListener("click", cargar)
 
 </script>
-
-</body>
-</html>
