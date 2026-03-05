@@ -1,37 +1,92 @@
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Cajero</title>
+  <style>
+    body{font-family:Arial;background:#0f172a;color:#fff;padding:40px}
+    .caja{background:#1e293b;padding:20px;border-radius:10px;margin-bottom:20px}
+    input{padding:10px;margin:6px 0;border-radius:6px;border:none;width:260px;display:block}
+    button{padding:10px 16px;border:none;border-radius:6px;background:#22c55e;color:#fff;cursor:pointer}
+    button:hover{background:#16a34a}
+    #msg{margin-top:14px}
+  </style>
+</head>
 
-<script>
+<body>
+  <h1>Panel Cajero</h1>
 
-var supabase = window.supabase.createClient(
-"https://mldxqjkodyteeaafbbgy.supabase.co",
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sZHhxamtvZHl0ZWVhYWZiYmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2NzAyNjAsImV4cCI6MjA4ODI0NjI2MH0.sUzvxyBUregItjOrjfizEhzBnV32iPRg7gBPmXAmPa0"
-);
+  <div class="caja">
+    <h3>Registrar carga</h3>
+    <input id="usuario" placeholder="Usuario jugador">
+    <input id="monto" placeholder="Monto carga (ej 10000)" inputmode="numeric">
+    <button id="btnCarga" type="button">Registrar carga</button>
+  </div>
 
-async function cargar(){
+  <div class="caja">
+    <h3>Registrar canje</h3>
+    <input id="usuarioCanje" placeholder="Usuario jugador">
+    <input id="puntosCanje" placeholder="Puntos a canjear (ej 25)" inputmode="numeric">
+    <button id="btnCanje" type="button">Registrar canje</button>
+  </div>
 
-let usuario = document.getElementById("usuario").value
-let monto = document.getElementById("monto").value
+  <p id="msg"></p>
 
-let puntos = Math.floor(monto/1000)
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://mldxqjkodyteeaafbbgy.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sZHhxamtvZHl0ZWVhYWZiYmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2NzAyNjAsImV4cCI6MjA4ODI0NjI2MH0.sUzvxyBUregItjOrjfizEhzBnV32iPRg7gBPmXAmPa0";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const { error } = await supabase
-.from("movements")
-.insert([{
-username:usuario,
-type:"CARGA",
-amount_ars:monto,
-points:puntos
-}])
+    function setMsg(t){ document.getElementById("msg").innerText = t; }
 
-if(error){
-document.getElementById("msg").innerText="Error: "+error.message
-return
-}
+    async function registrarCarga(){
+      const usuario = document.getElementById("usuario").value.trim();
+      const monto = parseInt(document.getElementById("monto").value, 10);
 
-document.getElementById("msg").innerText="Carga registrada"
+      if(!usuario) return setMsg("❌ Falta usuario");
+      if(!monto || monto <= 0) return setMsg("❌ Monto inválido");
 
-}
+      const puntos = Math.floor(monto/1000);
 
-document.getElementById("btnCarga").addEventListener("click", cargar)
+      setMsg("Registrando carga...");
+      const { error } = await supabase.from("movements").insert([{
+        username: usuario,
+        type: "CARGA",
+        amount_ars: monto,
+        points: puntos
+      }]);
 
-</script>
+      if(error) return setMsg("❌ Error: " + error.message);
+      setMsg(`✅ Carga registrada: ${usuario} +${puntos} pts`);
+      document.getElementById("monto").value = "";
+    }
+
+    async function registrarCanje(){
+      const usuario = document.getElementById("usuarioCanje").value.trim();
+      const pts = parseInt(document.getElementById("puntosCanje").value, 10);
+
+      if(!usuario) return setMsg("❌ Falta usuario");
+      if(!pts || pts <= 0) return setMsg("❌ Puntos inválidos");
+
+      setMsg("Registrando canje...");
+      const { error } = await supabase.from("movements").insert([{
+        username: usuario,
+        type: "CANJE",
+        amount_ars: 0,
+        points: -Math.abs(pts)
+      }]);
+
+      if(error) return setMsg("❌ Error: " + error.message);
+      setMsg(`✅ Canje registrado: ${usuario} -${pts} pts`);
+      document.getElementById("puntosCanje").value = "";
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("btnCarga").addEventListener("click", registrarCarga);
+      document.getElementById("btnCanje").addEventListener("click", registrarCanje);
+    });
+  </script>
+</body>
+</html>
