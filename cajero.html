@@ -1,11 +1,53 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-<head>
 
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Panel Cajero</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+padding:40px
+}
+
+h1{
+margin-bottom:30px
+}
+
+input{
+padding:10px;
+margin:5px;
+border-radius:6px;
+border:none
+}
+
+button{
+padding:10px 20px;
+border:none;
+border-radius:6px;
+background:#22c55e;
+color:white;
+cursor:pointer
+}
+
+button:hover{
+background:#16a34a
+}
+
+.caja{
+background:#1e293b;
+padding:20px;
+border-radius:10px;
+margin-bottom:30px
+}
+
+</style>
 
 </head>
 
@@ -13,13 +55,19 @@
 
 <h1>Panel de Cajeros</h1>
 
+<div class="caja">
+
 <h3>Registrar carga</h3>
 
 <input id="usuario" placeholder="Usuario jugador">
 
-<input id="monto" placeholder="Monto">
+<input id="monto" placeholder="Monto carga">
 
 <button onclick="cargar()">Registrar carga</button>
+
+</div>
+
+<div class="caja">
 
 <h3>Registrar canje</h3>
 
@@ -28,6 +76,8 @@
 <input id="puntosCanje" placeholder="Puntos a canjear">
 
 <button onclick="canjear()">Registrar canje</button>
+
+</div>
 
 <p id="msg"></p>
 
@@ -44,40 +94,52 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
 async function cargar(){
 
 let usuario = document.getElementById("usuario").value
-
 let monto = document.getElementById("monto").value
 
-let puntos = Math.floor(monto / 1000)
+let puntos = Math.floor(monto/1000)
 
-await supabase.from("movements").insert({
+const { error } = await supabase.from("movements").insert([{
 
 username:usuario,
 type:"CARGA",
 amount_ars:monto,
 points:puntos
 
-})
+}])
 
-document.getElementById("msg").innerText="Carga registrada"
+if(error){
+
+document.getElementById("msg").innerText="Error: "+error.message
+return
+
+}
+
+document.getElementById("msg").innerText="Carga registrada correctamente"
 
 }
 
 async function canjear(){
 
 let usuario = document.getElementById("usuarioCanje").value
-
 let puntos = document.getElementById("puntosCanje").value
 
-await supabase.from("movements").insert({
+const { error } = await supabase.from("movements").insert([{
 
 username:usuario,
 type:"CANJE",
 amount_ars:0,
 points:-puntos
 
-})
+}])
 
-document.getElementById("msg").innerText="Canje registrado"
+if(error){
+
+document.getElementById("msg").innerText="Error: "+error.message
+return
+
+}
+
+document.getElementById("msg").innerText="Canje registrado correctamente"
 
 }
 
