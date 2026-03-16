@@ -22,6 +22,7 @@
     button:hover{background:var(--ok2)}
     .muted{color:var(--muted);font-size:13px}
     #msg{margin-top:10px}
+
     .status{
       margin-top:12px;
       padding:12px;
@@ -36,6 +37,16 @@
     .p-oro{background:rgba(255,215,0,.18)}
     .p-diamante{background:rgba(94,224,255,.18)}
     .p-leyenda{background:rgba(245,197,66,.22)}
+
+    .preview{
+      margin-top:10px;
+      padding:10px;
+      border-radius:10px;
+      border:1px dashed rgba(255,255,255,.18);
+      background: rgba(0,0,0,.12);
+      display:none;
+    }
+
     table{width:100%;border-collapse:collapse;margin-top:10px;overflow:hidden;border-radius:10px}
     th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.10);text-align:left}
     th{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
@@ -73,6 +84,9 @@
           <button id="btnStatus" type="button" style="background:var(--warn);color:#111;">Ver estado</button>
         </div>
 
+        <!-- ✅ Preview del canje (10% = puntos x 100 créditos) -->
+        <div id="canjePreview" class="preview muted"></div>
+
         <div id="msg"></div>
 
         <!-- Estado automático -->
@@ -89,7 +103,8 @@
 
         <div class="muted" style="margin-top:10px;">
           * CARGA calcula puntos: monto/1000. <br>
-          * CANJE descuenta puntos: ingresa 25, 50, 100, etc.
+          * CANJE descuenta puntos: ingresa 25, 50, 100, etc. <br>
+          * Canje: <strong>1 punto = 100 créditos</strong> (10%).
         </div>
       </div>
 
@@ -120,6 +135,8 @@
 
     const $ = (id) => document.getElementById(id);
 
+    const CANJE_RATE = 100; // ✅ 1 punto = 100 créditos (10%)
+
     function pillClass(cat){
       const c = (cat||"").toUpperCase();
       if (c === "BRONCE") return "pill p-bronce";
@@ -132,6 +149,24 @@
 
     function setMsg(txt, ok=false){
       $("msg").innerHTML = ok ? `✅ ${txt}` : txt;
+    }
+
+    function formatNum(n){
+      return (n||0).toLocaleString("es-AR");
+    }
+
+    function updatePreview(){
+      const type = $("t").value;
+      const pts = parseInt($("p").value, 10) || 0;
+
+      if (type === "CANJE" && pts > 0){
+        const credits = pts * CANJE_RATE;
+        $("canjePreview").style.display = "block";
+        $("canjePreview").innerHTML = `Canje: <strong>${pts}</strong> puntos → <strong>${formatNum(credits)}</strong> créditos <span class="muted">(no extraíbles)</span>`;
+      } else {
+        $("canjePreview").style.display = "none";
+        $("canjePreview").innerHTML = "";
+      }
     }
 
     // Fallback si el usuario todavía no aparece en la vista (sin movimientos en 30 días)
@@ -217,8 +252,9 @@
       setMsg(`${username} ${type === "CARGA" ? "+" : ""}${points} pts registrado`, true);
       $("m").value = "";
       $("p").value = "";
+      updatePreview();
 
-      // ✅ después de guardar, mostrar el estado automáticamente
+      // después de guardar, mostrar estado automáticamente
       await mostrarEstado(username);
     }
 
@@ -276,12 +312,10 @@
     $("go").addEventListener("click", guardar);
     $("btnLoad").addEventListener("click", cargarRanking);
     $("btnStatus").addEventListener("click", () => mostrarEstado($("u").value.trim()));
+    $("u").addEventListener("blur", () => { const u = $("u").value.trim(); if (u) mostrarEstado(u); });
 
-    // Bonus: al salir del input usuario, muestra estado
-    $("u").addEventListener("blur", () => {
-      const u = $("u").value.trim();
-      if (u) mostrarEstado(u);
-    });
+    $("t").addEventListener("change", updatePreview);
+    $("p").addEventListener("input", updatePreview);
   </script>
 </body>
 </html>
