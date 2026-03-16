@@ -5,12 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Panel Cajero</title>
 
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎰</text></svg>">
-
   <style>
     :root{
       --bg:#0f172a; --card:#1e293b; --text:#fff; --muted:rgba(255,255,255,.7);
       --ok:#22c55e; --ok2:#16a34a; --stroke:rgba(255,255,255,.14);
+      --warn:#f5c542;
     }
     body{font-family:Arial;background:var(--bg);color:var(--text);padding:28px;margin:0}
     h1{margin:0 0 14px 0}
@@ -23,23 +22,31 @@
     button:hover{background:var(--ok2)}
     .muted{color:var(--muted);font-size:13px}
     #msg{margin-top:10px}
-    table{width:100%;border-collapse:collapse;margin-top:10px;overflow:hidden;border-radius:10px}
-    th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.10);text-align:left}
-    th{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
-    tr:hover td{background:rgba(255,255,255,.04)}
+    .status{
+      margin-top:12px;
+      padding:12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.18);
+    }
+    .statusTop{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
     .pill{display:inline-flex;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);font-size:12px;white-space:nowrap}
     .p-bronce{background:rgba(205,127,50,.25)}
     .p-plata{background:rgba(220,220,220,.18)}
     .p-oro{background:rgba(255,215,0,.18)}
     .p-diamante{background:rgba(94,224,255,.18)}
     .p-leyenda{background:rgba(245,197,66,.22)}
+    table{width:100%;border-collapse:collapse;margin-top:10px;overflow:hidden;border-radius:10px}
+    th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.10);text-align:left}
+    th{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+    tr:hover td{background:rgba(255,255,255,.04)}
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <h1>Panel Cajero</h1>
-    <p class="muted">Registrar cargas/canjes y ver ranking de usuarios (puntos últimos 30 días).</p>
+    <p class="muted">Registrar cargas/canjes y ver ranking (últimos 30 días).</p>
 
     <div class="grid">
       <!-- Registrar -->
@@ -61,10 +68,26 @@
           <input id="p" placeholder="Puntos (solo canje) ej 25" inputmode="numeric" />
         </div>
 
-        <button id="go" type="button" style="margin-top:10px;">Guardar</button>
+        <div class="row" style="margin-top:10px;">
+          <button id="go" type="button">Guardar</button>
+          <button id="btnStatus" type="button" style="background:var(--warn);color:#111;">Ver estado</button>
+        </div>
+
         <div id="msg"></div>
 
-        <div class="muted" style="margin-top:8px;">
+        <!-- Estado automático -->
+        <div id="statusBox" class="status" style="display:none;">
+          <div class="statusTop">
+            <div><strong id="stUser"></strong></div>
+            <div><span id="stLevel" class="pill">-</span></div>
+          </div>
+          <div class="muted" style="margin-top:8px;">
+            Puntos (30d): <strong id="stPoints">0</strong>
+            <span id="stNextWrap"> • Próximo: <strong id="stNext">-</strong> • Faltan: <strong id="stMissing">0</strong></span>
+          </div>
+        </div>
+
+        <div class="muted" style="margin-top:10px;">
           * CARGA calcula puntos: monto/1000. <br>
           * CANJE descuenta puntos: ingresa 25, 50, 100, etc.
         </div>
@@ -80,7 +103,7 @@
         </div>
 
         <div class="muted" style="margin-top:8px;">
-          Ordenado por puntos (últimos 30 días). Si no aparece nadie, es porque no hay movimientos recientes.
+          Ordenado por puntos (últimos 30 días).
         </div>
 
         <div id="rankBox"></div>
@@ -90,7 +113,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // Cliente Supabase (idempotente)
     window.sb = window.sb || window.supabase.createClient(
       "https://mldxqjkodyteeaafbbgy.supabase.co",
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sZHhxamtvZHl0ZWVhYWZiYmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2NzAyNjAsImV4cCI6MjA4ODI0NjI2MH0.sUzvxyBUregItjOrjfizEhzBnV32iPRg7gBPmXAmPa0"
@@ -110,6 +132,55 @@
 
     function setMsg(txt, ok=false){
       $("msg").innerHTML = ok ? `✅ ${txt}` : txt;
+    }
+
+    // Fallback si el usuario todavía no aparece en la vista (sin movimientos en 30 días)
+    function fallbackStatus(username){
+      return {
+        username,
+        points_30d: 0,
+        category: "BRONCE",
+        bonus_percent: 5,
+        next_category: "PLATA",
+        points_to_next: 50
+      };
+    }
+
+    async function mostrarEstado(username){
+      if(!username) return;
+
+      setMsg("Cargando estado...");
+
+      const { data, error } = await window.sb
+        .from("v_status_30d")
+        .select("username, points_30d, category, bonus_percent, next_category, points_to_next")
+        .eq("username", username)
+        .limit(1);
+
+      if (error) {
+        setMsg("❌ Error estado: " + error.message);
+        return;
+      }
+
+      const st = (data && data.length) ? data[0] : fallbackStatus(username);
+
+      $("statusBox").style.display = "block";
+      $("stUser").textContent = st.username;
+      $("stPoints").textContent = st.points_30d;
+
+      const lvlText = `${st.category} +${st.bonus_percent}%`;
+      $("stLevel").className = pillClass(st.category);
+      $("stLevel").textContent = lvlText;
+
+      if (st.next_category) {
+        $("stNextWrap").style.display = "inline";
+        $("stNext").textContent = st.next_category;
+        $("stMissing").textContent = st.points_to_next;
+      } else {
+        $("stNextWrap").style.display = "none";
+      }
+
+      setMsg(`Estado actualizado: ${lvlText} • ${st.points_30d} pts`, true);
     }
 
     async function guardar() {
@@ -143,9 +214,12 @@
 
       if (error) return setMsg("❌ Error: " + error.message);
 
-      setMsg(`${username} ${type === "CARGA" ? "+" : ""}${points} pts`, true);
+      setMsg(`${username} ${type === "CARGA" ? "+" : ""}${points} pts registrado`, true);
       $("m").value = "";
       $("p").value = "";
+
+      // ✅ después de guardar, mostrar el estado automáticamente
+      await mostrarEstado(username);
     }
 
     async function cargarRanking(){
@@ -153,7 +227,7 @@
 
       const { data, error } = await window.sb
         .from("v_status_30d")
-        .select("username, points_30d, category, bonus_percent, next_category, points_to_next, progress_percent")
+        .select("username, points_30d, category, bonus_percent, next_category, points_to_next")
         .order("points_30d", { ascending: false })
         .limit(200);
 
@@ -201,6 +275,13 @@
 
     $("go").addEventListener("click", guardar);
     $("btnLoad").addEventListener("click", cargarRanking);
+    $("btnStatus").addEventListener("click", () => mostrarEstado($("u").value.trim()));
+
+    // Bonus: al salir del input usuario, muestra estado
+    $("u").addEventListener("blur", () => {
+      const u = $("u").value.trim();
+      if (u) mostrarEstado(u);
+    });
   </script>
 </body>
 </html>
