@@ -1,205 +1,50 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Panel Cajero</title>
+async function cargarRanking(){
+  $("rankBox").innerHTML = "Cargando...";
 
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎰</text></svg>">
+  const { data, error } = await window.sb
+    .from("v_status_30d")
+    .select("username, points_30d, category, bonus_percent, next_category, points_to_next, progress_percent")
+    .order("points_30d", { ascending: false })
+    .limit(200);
 
-  <style>
-    :root{
-      --bg:#0f172a; --card:#1e293b; --text:#fff; --muted:rgba(255,255,255,.7);
-      --ok:#22c55e; --ok2:#16a34a; --stroke:rgba(255,255,255,.14);
-    }
-    body{font-family:Arial;background:var(--bg);color:var(--text);padding:28px;margin:0}
-    h1{margin:0 0 14px 0}
-    .wrap{max-width:980px;margin:0 auto}
-    .grid{display:grid;grid-template-columns:1fr;gap:14px}
-    .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    input,select{padding:10px;border-radius:8px;border:none;width:100%}
-    button{padding:10px 14px;border:none;border-radius:8px;background:var(--ok);color:#fff;cursor:pointer;font-weight:700}
-    button:hover{background:var(--ok2)}
-    .muted{color:var(--muted);font-size:13px}
-    #msg{margin-top:10px}
-    table{width:100%;border-collapse:collapse;margin-top:10px;overflow:hidden;border-radius:10px}
-    th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.10);text-align:left}
-    th{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
-    tr:hover td{background:rgba(255,255,255,.04)}
-    .pill{display:inline-flex;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);font-size:12px}
-    .p-bronce{background:rgba(205,127,50,.25)}
-    .p-plata{background:rgba(220,220,220,.18)}
-    .p-oro{background:rgba(255,215,0,.18)}
-    .p-diamante{background:rgba(94,224,255,.18)}
-    .p-leyenda{background:rgba(245,197,66,.22)}
-  </style>
-</head>
+  if (error) {
+    $("rankBox").innerHTML = "❌ Error: " + error.message;
+    return;
+  }
 
-<body>
-  <div class="wrap">
-    <h1>Panel Cajero</h1>
-    <p class="muted">Registrar cargas/canjes y ver ranking de usuarios (puntos últimos 30 días).</p>
+  const q = $("searchUser").value.trim().toLowerCase();
+  const rows = (data || []).filter(r => !q || String(r.username||"").toLowerCase().includes(q));
 
-    <div class="grid">
-      <!-- Registrar -->
-      <div class="card">
-        <h3 style="margin:0 0 10px 0;">Registrar movimiento</h3>
+  if (rows.length === 0){
+    $("rankBox").innerHTML = "<div class='muted'>No hay usuarios para mostrar.</div>";
+    return;
+  }
 
-        <input id="u" placeholder="Usuario jugador (ej: dana)" />
-
-        <div class="row" style="margin-top:10px;">
-          <select id="t">
-            <option value="CARGA">CARGA (suma)</option>
-            <option value="CANJE">CANJE (resta)</option>
-          </select>
-          <input id="caj" placeholder="Nombre cajero (opcional)" />
-        </div>
-
-        <div class="row" style="margin-top:10px;">
-          <input id="m" placeholder="Monto (solo carga) ej 10000" inputmode="numeric" />
-          <input id="p" placeholder="Puntos (solo canje) ej 25" inputmode="numeric" />
-        </div>
-
-        <button id="go" type="button" style="margin-top:10px;">Guardar</button>
-        <div id="msg"></div>
-        <div class="muted" style="margin-top:8px;">
-          * CARGA calcula puntos: monto/1000. <br>
-          * CANJE descuenta puntos: ingresa 25, 50, 100, etc.
-        </div>
-      </div>
-
-      <!-- Ranking -->
-      <div class="card">
-        <h3 style="margin:0 0 10px 0;">Usuarios y puntos actuales</h3>
-
-        <div class="row">
-          <input id="searchUser" placeholder="Buscar usuario (opcional)" />
-          <button id="btnLoad" type="button">Ver usuarios</button>
-        </div>
-
-        <div class="muted" style="margin-top:8px;">
-          Ordenado por puntos (últimos 30 días). Si no aparece nadie, es porque no hay movimientos recientes.
-        </div>
-
-        <div id="rankBox"></div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // Cliente Supabase (idempotente)
-    window.sb = window.sb || window.supabase.createClient(
-      "https://mldxqjkodyteeaafbbgy.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sZHhxamtvZHl0ZWVhYWZiYmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2NzAyNjAsImV4cCI6MjA4ODI0NjI2MH0.sUzvxyBUregItjOrjfizEhzBnV32iPRg7gBPmXAmPa0"
-    );
-
-    const $ = (id) => document.getElementById(id);
-
-    function pillClass(cat){
-      const c = (cat||"").toUpperCase();
-      if (c === "BRONCE") return "pill p-bronce";
-      if (c === "PLATA") return "pill p-plata";
-      if (c === "ORO") return "pill p-oro";
-      if (c === "DIAMANTE") return "pill p-diamante";
-      if (c === "LEYENDA") return "pill p-leyenda";
-      return "pill";
-    }
-
-    function setMsg(txt, ok=false){
-      $("msg").innerHTML = ok ? `✅ ${txt}` : txt;
-    }
-
-    async function guardar() {
-      const username = $("u").value.trim();
-      const type = $("t").value;
-      const cashier = $("caj").value.trim();
-
-      const monto = parseInt($("m").value, 10) || 0;
-      const ptsCanje = parseInt($("p").value, 10) || 0;
-
-      if (!username) return setMsg("❌ Falta usuario");
-
-      let amount_ars = 0;
-      let points = 0;
-
-      if (type === "CARGA") {
-        if (monto <= 0) return setMsg("❌ Monto inválido");
-        amount_ars = monto;
-        points = Math.floor(monto / 1000);
-      } else {
-        if (ptsCanje <= 0) return setMsg("❌ Puntos de canje inválidos");
-        amount_ars = 0;
-        points = -Math.abs(ptsCanje);
-      }
-
-      setMsg("Guardando...");
-
-      const { error } = await window.sb.from("movements").insert([{
-        username, type, amount_ars, points, cashier
-      }]);
-
-      if (error) return setMsg("❌ Error: " + error.message);
-
-      setMsg(`${username} ${type === "CARGA" ? "+" : ""}${points} pts`, true);
-      $("m").value = "";
-      $("p").value = "";
-    }
-
-    async function cargarRanking(){
-      $("rankBox").innerHTML = "Cargando...";
-
-      const { data, error } = await window.sb
-        .from("v_status_30d")
-        .select("username, points_30d, category, next_category, points_to_next, progress_percent")
-        .order("points_30d", { ascending: false })
-        .limit(200);
-
-      if (error) {
-        $("rankBox").innerHTML = "❌ Error: " + error.message;
-        return;
-      }
-
-      const q = $("searchUser").value.trim().toLowerCase();
-      const rows = (data || []).filter(r => !q || String(r.username||"").toLowerCase().includes(q));
-
-      if (rows.length === 0){
-        $("rankBox").innerHTML = "<div class='muted'>No hay usuarios para mostrar.</div>";
-        return;
-      }
-
-      const html = `
-        <table>
-          <thead>
+  const html = `
+    <table>
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Puntos 30d</th>
+          <th>Nivel</th>
+          <th>Para subir</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => {
+          const next = r.next_category ? `→ ${r.next_category} (${r.points_to_next} pts)` : "Máximo";
+          return `
             <tr>
-              <th>Usuario</th>
-              <th>Puntos 30d</th>
-              <th>Nivel</th>
-              <th>Para subir</th>
+              <td><strong>${r.username}</strong></td>
+              <td>${r.points_30d}</td>
+              <td><span class="${pillClass(r.category)}">${r.category} +${r.bonus_percent}%</span></td>
+              <td class="muted">${next}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${rows.map(r => {
-              const next = r.next_category ? `→ ${r.next_category} (${r.points_to_next} pts)` : "Máximo";
-              return `
-                <tr>
-                  <td><strong>${r.username}</strong></td>
-                  <td>${r.points_30d}</td>
-                  <td><span class="${pillClass(r.category)}">${r.category}</span></td>
-                  <td class="muted">${next}</td>
-                </tr>
-              `;
-            }).join("")}
-          </tbody>
-        </table>
-      `;
+          `;
+        }).join("")}
+      </tbody>
+    </table>
+  `;
 
-      $("rankBox").innerHTML = html;
-    }
-
-    $("go").addEventListener("click", guardar);
-    $("btnLoad").addEventListener("click", cargarRanking);
-  </script>
-</body>
-</html>
+  $("rankBox").innerHTML = html;
+}
