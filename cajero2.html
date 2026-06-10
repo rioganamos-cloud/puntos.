@@ -20,6 +20,7 @@
     input,select{padding:10px;border-radius:8px;border:none;width:100%}
     button{padding:10px 14px;border:none;border-radius:8px;background:var(--ok);color:#fff;cursor:pointer;font-weight:700}
     button:hover{background:var(--ok2)}
+    button:disabled{opacity:.5;cursor:not-allowed}
     .muted{color:var(--muted);font-size:13px}
     #msg{margin-top:10px}
 
@@ -40,11 +41,12 @@
 
     .preview{
       margin-top:10px;
-      padding:10px;
+      padding:12px;
       border-radius:10px;
-      border:1px dashed rgba(255,255,255,.18);
-      background: rgba(0,0,0,.12);
+      border:1px dashed rgba(255,255,255,.25);
+      background: rgba(0,0,0,.18);
       display:none;
+      font-size:14px;
     }
 
     table{width:100%;border-collapse:collapse;margin-top:10px;overflow:hidden;border-radius:10px}
@@ -68,15 +70,15 @@
 
         <div class="row" style="margin-top:10px;">
           <select id="t">
-            <option value="CARGA">CARGA (suma)</option>
-            <option value="CANJE">CANJE (resta)</option>
+            <option value="CARGA">CARGA (suma puntos)</option>
+            <option value="CANJE">CANJE (descuenta puntos)</option>
           </select>
           <input id="caj" placeholder="Nombre cajero (opcional)" />
         </div>
 
         <div class="row" style="margin-top:10px;">
-          <input id="m" placeholder="Monto (solo carga) ej 10000" inputmode="numeric" />
-          <input id="p" placeholder="Puntos (solo canje) ej 100" inputmode="numeric" />
+          <input id="m" placeholder="Monto carga (ej: 10000)" inputmode="numeric" />
+          <input id="p" placeholder="Puntos a canjear (ej: 100)" inputmode="numeric" />
         </div>
 
         <div class="row" style="margin-top:10px;">
@@ -84,27 +86,27 @@
           <button id="btnStatus" type="button" style="background:var(--warn);color:#111;">Ver estado</button>
         </div>
 
-        <!-- Preview del canje: 1 punto = $50 en fichas -->
-        <div id="canjePreview" class="preview muted"></div>
+        <!-- Preview del canje: 1 punto = $25 en fichas (25% de lo cargado) -->
+        <div id="canjePreview" class="preview"></div>
 
         <div id="msg"></div>
 
-        <!-- Estado automático -->
+        <!-- Estado automático del jugador -->
         <div id="statusBox" class="status" style="display:none;">
           <div class="statusTop">
             <div><strong id="stUser"></strong></div>
             <div><span id="stLevel" class="pill">-</span></div>
           </div>
           <div class="muted" style="margin-top:8px;">
-            Puntos (30d): <strong id="stPoints">0</strong>
+            Puntos disponibles (30d): <strong id="stPoints">0</strong>
             <span id="stNextWrap"> • Próximo: <strong id="stNext">-</strong> • Faltan: <strong id="stMissing">0</strong></span>
           </div>
         </div>
 
-        <div class="muted" style="margin-top:10px;">
-          * CARGA calcula puntos: $100 cargados = 1 punto. <br>
-          * CANJE descuenta puntos: ingresá la cantidad de puntos a canjear. <br>
-          * Canje: <strong>1 punto = $50 en fichas</strong> (50% de lo cargado).
+        <div class="muted" style="margin-top:12px;line-height:1.7">
+          * CARGA: <strong>$100 cargados = 1 punto</strong><br>
+          * CANJE: ingresá la cantidad de puntos a canjear<br>
+          * Equivalencia: <strong>1 punto = $25 en fichas</strong> (25% de lo cargado)
         </div>
       </div>
 
@@ -135,43 +137,52 @@
 
     const $ = (id) => document.getElementById(id);
 
-    // ✅ NUEVA EQUIVALENCIA: 1 punto = $50 en fichas (50% de lo cargado)
-    const CANJE_RATE = 50;
+    // ─── CONFIGURACIÓN CENTRAL DE EQUIVALENCIA ───────────────────────────────
+    const CANJE_RATE = 25; // 1 punto = $25 en fichas (25% de lo cargado)
+    // ─────────────────────────────────────────────────────────────────────────
 
-    function pillClass(cat){
-      const c = (cat||"").toUpperCase();
-      if (c === "BRONCE") return "pill p-bronce";
-      if (c === "PLATA") return "pill p-plata";
-      if (c === "ORO") return "pill p-oro";
+    // Bloqueo anti doble clic
+    let guardando = false;
+
+    function pillClass(cat) {
+      const c = (cat || "").toUpperCase();
+      if (c === "BRONCE")   return "pill p-bronce";
+      if (c === "PLATA")    return "pill p-plata";
+      if (c === "ORO")      return "pill p-oro";
       if (c === "DIAMANTE") return "pill p-diamante";
-      if (c === "LEYENDA") return "pill p-leyenda";
+      if (c === "LEYENDA")  return "pill p-leyenda";
       return "pill";
     }
 
-    function setMsg(txt, ok=false){
-      $("msg").innerHTML = ok ? `✅ ${txt}` : txt;
+    function setMsg(txt, ok = false) {
+      $("msg").innerHTML = ok ? `✅ ${txt}` : `⚠️ ${txt}`;
     }
 
-    function formatNum(n){
-      return (n||0).toLocaleString("es-AR");
+    function formatNum(n) {
+      return (n || 0).toLocaleString("es-AR");
     }
 
-    function updatePreview(){
+    // Actualiza el preview del canje en tiempo real
+    function updatePreview() {
       const type = $("t").value;
-      const pts = parseInt($("p").value, 10) || 0;
+      const raw  = $("p").value.trim();
+      const pts  = parseInt(raw, 10);
+      const prev = $("canjePreview");
 
-      if (type === "CANJE" && pts > 0){
-        const fichas = pts * CANJE_RATE;
-        $("canjePreview").style.display = "block";
-        $("canjePreview").innerHTML =
-          `Canje: <strong>${pts}</strong> puntos → <strong>$${formatNum(fichas)}</strong> en fichas`;
-      } else {
-        $("canjePreview").style.display = "none";
-        $("canjePreview").innerHTML = "";
+      if (type !== "CANJE" || !raw || isNaN(pts) || pts <= 0) {
+        prev.style.display = "none";
+        prev.innerHTML = "";
+        return;
       }
+
+      const fichas = pts * CANJE_RATE;
+      prev.style.display = "block";
+      prev.innerHTML =
+        `Vas a canjear <strong>${formatNum(pts)}</strong> puntos ` +
+        `y recibirás <strong>$${formatNum(fichas)}</strong> en fichas.`;
     }
 
-    function fallbackStatus(username){
+    function fallbackStatus(username) {
       return {
         username,
         points_30d: 0,
@@ -182,9 +193,19 @@
       };
     }
 
-    async function mostrarEstado(username){
-      if(!username) return;
+    async function getPuntos30d(username) {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await window.sb
+        .from("movements")
+        .select("points")
+        .eq("username", username)
+        .gte("created_at", since);
+      if (error) throw error;
+      return (data || []).reduce((acc, m) => acc + (m.points || 0), 0);
+    }
 
+    async function mostrarEstado(username) {
+      if (!username) return;
       setMsg("Cargando estado...");
 
       const { data, error } = await window.sb
@@ -194,7 +215,7 @@
         .limit(1);
 
       if (error) {
-        setMsg("❌ Error estado: " + error.message);
+        setMsg("Error al cargar estado: " + error.message);
         return;
       }
 
@@ -202,7 +223,7 @@
 
       $("statusBox").style.display = "block";
       $("stUser").textContent = st.username;
-      $("stPoints").textContent = st.points_30d;
+      $("stPoints").textContent = formatNum(st.points_30d);
 
       const lvlText = `${st.category} +${st.bonus_percent}%`;
       $("stLevel").className = pillClass(st.category);
@@ -211,56 +232,89 @@
       if (st.next_category) {
         $("stNextWrap").style.display = "inline";
         $("stNext").textContent = st.next_category;
-        $("stMissing").textContent = st.points_to_next;
+        $("stMissing").textContent = formatNum(st.points_to_next);
       } else {
         $("stNextWrap").style.display = "none";
       }
 
-      setMsg(`Estado actualizado: ${lvlText} • ${st.points_30d} pts`, true);
+      setMsg(`Estado actualizado: ${lvlText} • ${formatNum(st.points_30d)} pts`, true);
     }
 
     async function guardar() {
-      const username = $("u").value.trim();
-      const type = $("t").value;
-      const cashier = $("caj").value.trim();
+      if (guardando) return; // anti doble clic
 
-      const monto = parseInt($("m").value, 10) || 0;
-      const ptsCanje = parseInt($("p").value, 10) || 0;
+      const username  = $("u").value.trim();
+      const type      = $("t").value;
+      const cashier   = $("caj").value.trim();
+      const montoRaw  = $("m").value.trim();
+      const ptsRaw    = $("p").value.trim();
 
-      if (!username) return setMsg("❌ Falta usuario");
+      // ── Validaciones ──────────────────────────────────────────────────────
+      if (!username) return setMsg("Falta el nombre de usuario.");
 
       let amount_ars = 0;
-      let points = 0;
+      let points     = 0;
       let description = "";
 
       if (type === "CARGA") {
-        if (monto <= 0) return setMsg("❌ Monto inválido");
-        amount_ars = monto;
-        // ✅ NUEVA FÓRMULA: $100 cargados = 1 punto
-        points = Math.floor(monto / 100);
+        const monto = parseInt(montoRaw, 10);
+        if (!montoRaw || isNaN(monto) || monto <= 0)
+          return setMsg("El monto de la carga debe ser un número mayor a 0.");
+        amount_ars  = monto;
+        points      = Math.floor(monto / 100); // $100 = 1 punto
         description = `Carga de $${formatNum(monto)} — ${points} punto${points !== 1 ? "s" : ""}`;
-      } else {
-        if (ptsCanje <= 0) return setMsg("❌ Puntos de canje inválidos");
-        amount_ars = 0;
-        points = -Math.abs(ptsCanje);
-        // ✅ DESCRIPCIÓN DEL CANJE: puntos x $50 en fichas
-        const fichas = ptsCanje * CANJE_RATE;
-        description = `Canje de ${ptsCanje} puntos por $${formatNum(fichas)} en fichas`;
-      }
 
+      } else {
+        // CANJE: validaciones estrictas del lado del frontend
+        if (!ptsRaw || ptsRaw.includes(".") || ptsRaw.includes(","))
+          return setMsg("Los puntos deben ser un número entero (sin decimales).");
+
+        const ptsCanje = parseInt(ptsRaw, 10);
+
+        if (isNaN(ptsCanje) || ptsCanje <= 0)
+          return setMsg("La cantidad de puntos debe ser mayor a 0.");
+
+        // Validación server-side: verificar puntos disponibles en Supabase
+        let puntosDisponibles = 0;
+        try {
+          puntosDisponibles = await getPuntos30d(username);
+        } catch (e) {
+          return setMsg("No se pudo verificar el saldo: " + e.message);
+        }
+
+        if (ptsCanje > puntosDisponibles)
+          return setMsg(
+            `Puntos insuficientes. Disponibles: ${formatNum(puntosDisponibles)} — Solicitados: ${formatNum(ptsCanje)}`
+          );
+
+        const fichas = ptsCanje * CANJE_RATE;
+        amount_ars   = 0;
+        points       = -Math.abs(ptsCanje);
+        description  = `Canje de ${formatNum(ptsCanje)} puntos por $${formatNum(fichas)} en fichas`;
+      }
+      // ── Fin validaciones ──────────────────────────────────────────────────
+
+      guardando = true;
+      $("go").disabled = true;
       setMsg("Guardando...");
 
       const { error } = await window.sb.from("movements").insert([{
         username, type, amount_ars, points, cashier, description
       }]);
 
-      if (error) return setMsg("❌ Error: " + error.message);
+      guardando = false;
+      $("go").disabled = false;
+
+      if (error) return setMsg("Error al guardar: " + error.message);
 
       if (type === "CANJE") {
         const fichas = Math.abs(points) * CANJE_RATE;
-        setMsg(`${username}: Canje de ${Math.abs(points)} puntos por $${formatNum(fichas)} en fichas`, true);
+        setMsg(
+          `${username}: Canje de ${formatNum(Math.abs(points))} puntos por $${formatNum(fichas)} en fichas`,
+          true
+        );
       } else {
-        setMsg(`${username}: +${points} pts por carga de $${formatNum(monto)}`, true);
+        setMsg(`${username}: +${formatNum(points)} pts por carga de $${formatNum(amount_ars)}`, true);
       }
 
       $("m").value = "";
@@ -270,7 +324,7 @@
       await mostrarEstado(username);
     }
 
-    async function cargarRanking(){
+    async function cargarRanking() {
       $("rankBox").innerHTML = "Cargando...";
 
       const { data, error } = await window.sb
@@ -284,15 +338,15 @@
         return;
       }
 
-      const q = $("searchUser").value.trim().toLowerCase();
-      const rows = (data || []).filter(r => !q || String(r.username||"").toLowerCase().includes(q));
+      const q    = $("searchUser").value.trim().toLowerCase();
+      const rows = (data || []).filter(r => !q || String(r.username || "").toLowerCase().includes(q));
 
-      if (rows.length === 0){
+      if (rows.length === 0) {
         $("rankBox").innerHTML = "<div class='muted'>No hay usuarios para mostrar.</div>";
         return;
       }
 
-      const html = `
+      $("rankBox").innerHTML = `
         <table>
           <thead>
             <tr>
@@ -304,28 +358,26 @@
           </thead>
           <tbody>
             ${rows.map(r => {
-              const next = r.next_category ? `→ ${r.next_category} (${r.points_to_next} pts)` : "Máximo";
+              const next = r.next_category
+                ? `→ ${r.next_category} (${formatNum(r.points_to_next)} pts)`
+                : "Máximo";
               return `
                 <tr>
                   <td><strong>${r.username}</strong></td>
-                  <td>${r.points_30d}</td>
+                  <td>${formatNum(r.points_30d)}</td>
                   <td><span class="${pillClass(r.category)}">${r.category} +${r.bonus_percent}%</span></td>
                   <td class="muted">${next}</td>
-                </tr>
-              `;
+                </tr>`;
             }).join("")}
           </tbody>
-        </table>
-      `;
-
-      $("rankBox").innerHTML = html;
+        </table>`;
     }
 
+    // ── Event listeners ──────────────────────────────────────────────────────
     $("go").addEventListener("click", guardar);
     $("btnLoad").addEventListener("click", cargarRanking);
     $("btnStatus").addEventListener("click", () => mostrarEstado($("u").value.trim()));
     $("u").addEventListener("blur", () => { const u = $("u").value.trim(); if (u) mostrarEstado(u); });
-
     $("t").addEventListener("change", updatePreview);
     $("p").addEventListener("input", updatePreview);
   </script>
