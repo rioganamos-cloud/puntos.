@@ -76,7 +76,7 @@
 
         <div class="row" style="margin-top:10px;">
           <input id="m" placeholder="Monto (solo carga) ej 10000" inputmode="numeric" />
-          <input id="p" placeholder="Puntos (solo canje) ej 25" inputmode="numeric" />
+          <input id="p" placeholder="Puntos (solo canje) ej 100" inputmode="numeric" />
         </div>
 
         <div class="row" style="margin-top:10px;">
@@ -84,7 +84,7 @@
           <button id="btnStatus" type="button" style="background:var(--warn);color:#111;">Ver estado</button>
         </div>
 
-        <!-- ✅ Preview del canje (10% = puntos x 100 créditos) -->
+        <!-- Preview del canje: 1 punto = $50 en fichas -->
         <div id="canjePreview" class="preview muted"></div>
 
         <div id="msg"></div>
@@ -102,9 +102,9 @@
         </div>
 
         <div class="muted" style="margin-top:10px;">
-          * CARGA calcula puntos: monto/1000. <br>
-          * CANJE descuenta puntos: ingresa 25, 50, 100, etc. <br>
-          * Canje: <strong>1 punto = 100 créditos</strong> (10%).
+          * CARGA calcula puntos: $100 cargados = 1 punto. <br>
+          * CANJE descuenta puntos: ingresá la cantidad de puntos a canjear. <br>
+          * Canje: <strong>1 punto = $50 en fichas</strong> (50% de lo cargado).
         </div>
       </div>
 
@@ -135,7 +135,8 @@
 
     const $ = (id) => document.getElementById(id);
 
-    const CANJE_RATE = 100; // ✅ 1 punto = 100 créditos (10%)
+    // ✅ NUEVA EQUIVALENCIA: 1 punto = $50 en fichas (50% de lo cargado)
+    const CANJE_RATE = 50;
 
     function pillClass(cat){
       const c = (cat||"").toUpperCase();
@@ -160,16 +161,16 @@
       const pts = parseInt($("p").value, 10) || 0;
 
       if (type === "CANJE" && pts > 0){
-        const credits = pts * CANJE_RATE;
+        const fichas = pts * CANJE_RATE;
         $("canjePreview").style.display = "block";
-        $("canjePreview").innerHTML = `Canje: <strong>${pts}</strong> puntos → <strong>${formatNum(credits)}</strong> créditos <span class="muted">(no extraíbles)</span>`;
+        $("canjePreview").innerHTML =
+          `Canje: <strong>${pts}</strong> puntos → <strong>$${formatNum(fichas)}</strong> en fichas`;
       } else {
         $("canjePreview").style.display = "none";
         $("canjePreview").innerHTML = "";
       }
     }
 
-    // Fallback si el usuario todavía no aparece en la vista (sin movimientos en 30 días)
     function fallbackStatus(username){
       return {
         username,
@@ -230,31 +231,42 @@
 
       let amount_ars = 0;
       let points = 0;
+      let description = "";
 
       if (type === "CARGA") {
         if (monto <= 0) return setMsg("❌ Monto inválido");
         amount_ars = monto;
-        points = Math.floor(monto / 1000);
+        // ✅ NUEVA FÓRMULA: $100 cargados = 1 punto
+        points = Math.floor(monto / 100);
+        description = `Carga de $${formatNum(monto)} — ${points} punto${points !== 1 ? "s" : ""}`;
       } else {
         if (ptsCanje <= 0) return setMsg("❌ Puntos de canje inválidos");
         amount_ars = 0;
         points = -Math.abs(ptsCanje);
+        // ✅ DESCRIPCIÓN DEL CANJE: puntos x $50 en fichas
+        const fichas = ptsCanje * CANJE_RATE;
+        description = `Canje de ${ptsCanje} puntos por $${formatNum(fichas)} en fichas`;
       }
 
       setMsg("Guardando...");
 
       const { error } = await window.sb.from("movements").insert([{
-        username, type, amount_ars, points, cashier
+        username, type, amount_ars, points, cashier, description
       }]);
 
       if (error) return setMsg("❌ Error: " + error.message);
 
-      setMsg(`${username} ${type === "CARGA" ? "+" : ""}${points} pts registrado`, true);
+      if (type === "CANJE") {
+        const fichas = Math.abs(points) * CANJE_RATE;
+        setMsg(`${username}: Canje de ${Math.abs(points)} puntos por $${formatNum(fichas)} en fichas`, true);
+      } else {
+        setMsg(`${username}: +${points} pts por carga de $${formatNum(monto)}`, true);
+      }
+
       $("m").value = "";
       $("p").value = "";
       updatePreview();
 
-      // después de guardar, mostrar estado automáticamente
       await mostrarEstado(username);
     }
 
